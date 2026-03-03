@@ -25,4 +25,23 @@ fi
 # Windows Python にパスを渡すため pptx2jpg.py のパスを変換
 WIN_SCRIPT="$(wslpath -w "$PPTX2JPG")"
 
-exec "$PYTHON_EXE" "$WIN_SCRIPT" "$@"
+# -i / -o 引数のパスをWSL側でWindowsパスに変換してから渡す
+# Windows Python では wslpath が使えないため、ここで変換する必要がある
+args=()
+next_is_path=false
+for arg in "$@"; do
+    if $next_is_path; then
+        # /で始まるUnixパスをWindowsパスに変換
+        if [[ "$arg" == /* ]]; then
+            arg="$(wslpath -w "$arg")"
+        fi
+        next_is_path=false
+    fi
+    # 次の引数がパスかどうかを判定
+    case "$arg" in
+        -i|--input|-o|--output) next_is_path=true ;;
+    esac
+    args+=("$arg")
+done
+
+exec "$PYTHON_EXE" "$WIN_SCRIPT" "${args[@]}"
